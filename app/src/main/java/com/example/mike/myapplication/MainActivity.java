@@ -1,71 +1,49 @@
 package com.example.mike.myapplication;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.location.Address;
-import android.location.Geocoder;
-import android.location.Location;
 import android.location.LocationListener;
-import android.location.LocationManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
+import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
-
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.appindexing.Thing;
 import com.google.android.gms.common.api.GoogleApiClient;
+import static com.example.mike.myapplication.R.id.location;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Locale;
-
-import static android.location.LocationManager.NETWORK_PROVIDER;
-
-
-public class MainActivity extends AppCompatActivity implements LocationListener {
+public class MainActivity extends AppCompatActivity {
 
     static final int REQUEST_IMAGE_CAPTURE = 1;
-    //ImageView mImageView;
 
-    // Acquire a reference to the system Location Manager
-    LocationManager locationManager = null;
-
-
-    Geocoder geocoder;
-    List<Address> addresses;
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
      * See https://g.co/AppIndexing/AndroidStudio for more information.
      */
     private GoogleApiClient client;
-
+    private boolean wifiConnected;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        locationManager.requestLocationUpdates(NETWORK_PROVIDER, 0, 0, this);
         setContentView(R.layout.activity_main);
+        BroadcastReceiver receiver = MyBroadcastReceiver.createMyBroadcastReceiver(this);
+        LocationListener locationListener = new MyLocationListener(this);
+        setWifiButtonMessage(this.getBaseContext());
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
@@ -76,66 +54,6 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
             startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
         }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            Bundle extras = data.getExtras();
-            Bitmap imageBitmap = (Bitmap) extras.get("data");
-            //mImageView.setImageBitmap(imageBitmap);
-            ImageView imageView = (ImageView) findViewById(R.id.capturedPhoto);
-            imageView.setImageBitmap(imageBitmap);
-        }
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-        geocoder = new Geocoder(this, Locale.getDefault());
-        Location locationLondres = null;
-        try {
-            addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1); // Here 1 represent max location result to returned, by documents it recommended 1 to 5
-            locationLondres = new Location("");
-            Address address = geocoder.getFromLocationName("London", 1).get(0);
-            locationLondres.setLatitude(address.getLatitude());
-            locationLondres.setLongitude(address.getLongitude());
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        }
-
-        String address = addresses.get(0).getAddressLine(0); // If any additional address line present than only, check with max available address lines by getMaxAddressLineIndex()
-        String city = addresses.get(0).getLocality();
-        String state = addresses.get(0).getAdminArea();
-        String country = addresses.get(0).getCountryName();
-        String postalCode = addresses.get(0).getPostalCode();
-        String knownName = addresses.get(0).getFeatureName(); // Only if available else return NULL
-        float distanciaALondres = location.distanceTo(locationLondres);
-
-        String locationString = "Your current location:\naddress: " + address +
-                "\ncity: " + city +
-                "\nstate: " + state +
-                "\ncountry: " + country +
-                "\npost code: " + postalCode +
-                "\nknown name: " + knownName +
-                "\n distancia a Londres: " + (distanciaALondres / 1000) + "km" + ", " + (distanciaALondres / 1600) + " miles";
-        TextView textView = (TextView) findViewById(R.id.location);
-        textView.setText(locationString);
-    }
-
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-
-    }
-
-    @Override
-    public void onProviderEnabled(String provider) {
-
-    }
-
-    @Override
-    public void onProviderDisabled(String provider) {
-
     }
 
     /**
@@ -152,6 +70,24 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
                 .setObject(object)
                 .setActionStatus(Action.STATUS_TYPE_COMPLETED)
                 .build();
+    }
+    public void updateLocation(Address address, float distanciaALondres) {
+        String addressString = address.getAddressLine(0); // If any additional address line present than only, check with max available address lines by getMaxAddressLineIndex()
+        String city = address.getLocality();
+        String state = address.getAdminArea();
+        String country = address.getCountryName();
+        String postalCode = address.getPostalCode();
+        String knownName = address.getFeatureName(); // Only if available else return NULL
+
+        String locationString = "Your current location:\naddress: " + addressString +
+                "\ncity: " + city +
+                "\nstate: " + state +
+                "\ncountry: " + country +
+                "\npost code: " + postalCode +
+                "\nknown name: " + knownName +
+                "\n distancia a Londres: " + (distanciaALondres / 1000) + "km" + ", " + (distanciaALondres / 1600) + " miles";
+        TextView textView = (TextView) findViewById(location);
+        textView.setText(locationString);
     }
 
     @Override
@@ -173,4 +109,39 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         AppIndex.AppIndexApi.end(client, getIndexApiAction());
         client.disconnect();
     }
+
+    public void setWifiButtonMessage(Context context) {
+        ConnectivityManager connManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo mWifi = connManager.getActiveNetworkInfo();
+        String message = "";
+        if ( null != mWifi && mWifi.getType() == ConnectivityManager.TYPE_WIFI && mWifi.isConnectedOrConnecting()) {
+            message = "Apagar Wifi";
+            wifiConnected = true;
+        } else {
+            message = "Encender Wifi";
+            wifiConnected = false;
+        }
+        Button textView = (Button) findViewById(R.id.wifiButton);
+        textView.setText(message);
+    }
+
+    public void toggleWifi(View view) {
+        WifiManager wifiManager = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
+        if (!wifiConnected) {
+            Button textView = (Button) findViewById(R.id.wifiButton);
+            textView.setText("encendiendo...");
+        }
+        wifiManager.setWifiEnabled(wifiConnected ? false : true);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            Bundle extras = data.getExtras();
+            Bitmap imageBitmap = (Bitmap) extras.get("data");
+            ImageView imageView = (ImageView) findViewById(R.id.capturedPhoto);
+            imageView.setImageBitmap(imageBitmap);
+        }
+    }
+
 }

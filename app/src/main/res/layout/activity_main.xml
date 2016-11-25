@@ -11,17 +11,31 @@
     android:orientation="vertical"
     tools:context="com.example.mike.myapplication.MainActivity">
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="My first app"
-        android:textAlignment="center"/>
 
-    <Button
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:id="@+id/activity_main_first_line_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Start Camera"
-        android:onClick="startCamera"/>
+        android:orientation="horizontal"
+        tools:context="com.example.mike.myapplication.MainActivity">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="My first app"
+            android:textAlignment="center"/>
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Start Camera"
+                android:onClick="startCamera"/>
+            <Button
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:onClick="toggleWifi"
+                android:id="@+id/wifiButton"/>
+    </LinearLayout>
+
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="264dp"
